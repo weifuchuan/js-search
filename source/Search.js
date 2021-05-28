@@ -1,15 +1,15 @@
 // @flow
-import getNestedFieldValue from './getNestedFieldValue';
+import getNestedFieldValue from "./getNestedFieldValue";
 
-import { PrefixIndexStrategy } from './IndexStrategy/index';
-import { LowerCaseSanitizer } from './Sanitizer/index';
-import { TfIdfSearchIndex } from './SearchIndex/index';
-import { SimpleTokenizer } from './Tokenizer/index';
+import { PrefixIndexStrategy } from "./IndexStrategy/index";
+import { LowerCaseSanitizer } from "./Sanitizer/index";
+import { TfIdfSearchIndex } from "./SearchIndex/index";
+import { SimpleTokenizer } from "./Tokenizer/index";
 
-import type { IIndexStrategy } from './IndexStrategy/index';
-import type { ISanitizer } from './Sanitizer/index';
-import type { ISearchIndex } from './SearchIndex/index';
-import type { ITokenizer } from './Tokenizer/index';
+import type { IIndexStrategy } from "./IndexStrategy/index";
+import type { ISanitizer } from "./Sanitizer/index";
+import type { ISearchIndex } from "./SearchIndex/index";
+import type { ITokenizer } from "./Tokenizer/index";
 
 /**
  * Simple client-side searching within a set of documents.
@@ -17,29 +17,28 @@ import type { ITokenizer } from './Tokenizer/index';
  * <p>Documents can be searched by any number of fields. Indexing and search strategies are highly customizable.
  */
 export class Search {
-
-  _documents : Array<Object>;
-  _indexStrategy : IIndexStrategy;
-  _initialized : boolean;
-  _sanitizer : ISanitizer;
+  _documents: Array<Object>;
+  _indexStrategy: IIndexStrategy;
+  _initialized: boolean;
+  _sanitizer: ISanitizer;
 
   /**
    * Array containing either a property name or a path (list of property names) to a nested value
    */
-  _searchableFields : Array<string|Array<string>>;
+  _searchableFields: Array<string | Array<string>>;
 
-  _searchIndex : ISearchIndex;
-  _tokenizer : ITokenizer;
-  _uidFieldName : string | Array<string>;
+  _searchIndex: ISearchIndex;
+  _tokenizer: ITokenizer;
+  _uidFieldName: string | Array<string>;
 
   /**
    * Constructor.
    * @param uidFieldName Field containing values that uniquely identify search documents; this field's values are used
    *                     to ensure that a search result set does not contain duplicate objects.
    */
-  constructor(uidFieldName : string | Array<string>) {
+  constructor(uidFieldName: string | Array<string>) {
     if (!uidFieldName) {
-      throw Error('js-search requires a uid field name constructor parameter');
+      throw Error("js-search requires a uid field name constructor parameter");
     }
 
     this._uidFieldName = uidFieldName;
@@ -59,15 +58,15 @@ export class Search {
    * @param value Custom index strategy
    * @throws Error if documents have already been indexed by this search instance
    */
-  set indexStrategy(value : IIndexStrategy) {
+  set indexStrategy(value: IIndexStrategy) {
     if (this._initialized) {
-      throw Error('IIndexStrategy cannot be set after initialization');
+      throw Error("IIndexStrategy cannot be set after initialization");
     }
 
     this._indexStrategy = value;
   }
 
-  get indexStrategy() : IIndexStrategy {
+  get indexStrategy(): IIndexStrategy {
     return this._indexStrategy;
   }
 
@@ -76,14 +75,14 @@ export class Search {
    * @param value Custom text sanitizing strategy
    * @throws Error if documents have already been indexed by this search instance
    */
-  set sanitizer(value : ISanitizer) {
+  set sanitizer(value: ISanitizer) {
     if (this._initialized) {
-      throw Error('ISanitizer cannot be set after initialization');
+      throw Error("ISanitizer cannot be set after initialization");
     }
 
     this._sanitizer = value;
   }
-  get sanitizer() : ISanitizer {
+  get sanitizer(): ISanitizer {
     return this._sanitizer;
   }
 
@@ -92,14 +91,14 @@ export class Search {
    * @param value Custom search index strategy
    * @throws Error if documents have already been indexed
    */
-  set searchIndex(value : ISearchIndex) {
+  set searchIndex(value: ISearchIndex) {
     if (this._initialized) {
-      throw Error('ISearchIndex cannot be set after initialization');
+      throw Error("ISearchIndex cannot be set after initialization");
     }
 
     this._searchIndex = value;
   }
-  get searchIndex() : ISearchIndex {
+  get searchIndex(): ISearchIndex {
     return this._searchIndex;
   }
 
@@ -108,14 +107,14 @@ export class Search {
    * @param value Custom text tokenizing strategy
    * @throws Error if documents have already been indexed by this search instance
    */
-  set tokenizer(value : ITokenizer) {
+  set tokenizer(value: ITokenizer) {
     if (this._initialized) {
-      throw Error('ITokenizer cannot be set after initialization');
+      throw Error("ITokenizer cannot be set after initialization");
     }
 
     this._tokenizer = value;
   }
-  get tokenizer() : ITokenizer {
+  get tokenizer(): ITokenizer {
     return this._tokenizer;
   }
 
@@ -123,7 +122,7 @@ export class Search {
    * Add a searchable document to the index. Document will automatically be indexed for search.
    * @param document
    */
-  addDocument(document : Object) : void {
+  addDocument(document: Object): void {
     this.addDocuments([document]);
   }
 
@@ -131,7 +130,7 @@ export class Search {
    * Adds searchable documents to the index. Documents will automatically be indexed for search.
    * @param document
    */
-  addDocuments(documents : Array<Object>) : void {
+  addDocuments(documents: Array<Object>): void {
     this._documents = this._documents.concat(documents);
     this.indexDocuments_(documents, this._searchableFields);
   }
@@ -141,7 +140,7 @@ export class Search {
    *
    * @param field Searchable field or field path. Pass a string to index a top-level field and an array of strings for nested fields.
    */
-  addIndex(field : string|Array<string>) {
+  addIndex(field: string | Array<string>) {
     this._searchableFields.push(field);
     this.indexDocuments_(this._documents, [field]);
   }
@@ -151,8 +150,19 @@ export class Search {
    * @param query
    * @returns {Array<Object>}
    */
-  search(query : string) : Array<Object> {
-    var tokens : Array<string> = this._tokenizer.tokenize(this._sanitizer.sanitize(query));
+  search(query: string): Array<Object> {
+    var tokens: Array<string> = this._tokenizer.tokenize(
+      this._sanitizer.sanitize(query)
+    );
+
+    return this._searchIndex.search(tokens, this._documents);
+  }
+
+  async searchAsync(
+    query: string,
+    tokenize: (text: string) => Promise<Array<string>>
+  ): Promise<Array<Object>> {
+    var tokens: Array<string> = await tokenize(this._sanitizer.sanitize(query));
 
     return this._searchIndex.search(tokens, this._documents);
   }
@@ -162,7 +172,10 @@ export class Search {
    * @param _searchableFields Array containing property names and paths (lists of property names) to nested values
    * @private
    */
-  indexDocuments_(documents : Array<Object>, _searchableFields : Array<string|Array<string>>) : void {
+  indexDocuments_(
+    documents: Array<Object>,
+    _searchableFields: Array<string | Array<string>>
+  ): void {
     this._initialized = true;
 
     var indexStrategy = this._indexStrategy;
@@ -181,7 +194,11 @@ export class Search {
         uid = doc[uidFieldName];
       }
 
-      for (var sfi = 0, numSearchableFields = _searchableFields.length; sfi < numSearchableFields; sfi++) {
+      for (
+        var sfi = 0, numSearchableFields = _searchableFields.length;
+        sfi < numSearchableFields;
+        sfi++
+      ) {
         var fieldValue;
         var searchableField = _searchableFields[sfi];
 
@@ -193,20 +210,28 @@ export class Search {
 
         if (
           fieldValue != null &&
-          typeof fieldValue !== 'string' &&
+          typeof fieldValue !== "string" &&
           fieldValue.toString
         ) {
           fieldValue = fieldValue.toString();
         }
 
-        if (typeof fieldValue === 'string') {
+        if (typeof fieldValue === "string") {
           var fieldTokens = tokenizer.tokenize(sanitizer.sanitize(fieldValue));
 
-          for (var fti = 0, numFieldValues = fieldTokens.length; fti < numFieldValues; fti++) {
+          for (
+            var fti = 0, numFieldValues = fieldTokens.length;
+            fti < numFieldValues;
+            fti++
+          ) {
             var fieldToken = fieldTokens[fti];
             var expandedTokens = indexStrategy.expandToken(fieldToken);
 
-            for (var eti = 0, nummExpandedTokens = expandedTokens.length; eti < nummExpandedTokens; eti++) {
+            for (
+              var eti = 0, nummExpandedTokens = expandedTokens.length;
+              eti < nummExpandedTokens;
+              eti++
+            ) {
               var expandedToken = expandedTokens[eti];
 
               searchIndex.indexDocument(expandedToken, uid, doc);
